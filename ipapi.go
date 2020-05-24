@@ -1,3 +1,6 @@
+//Package ipapi is an unofficial library for http://ip-api.com
+//Author: Z-M-Huang
+//Repository: https://github.com/Z-M-Huang/go-ipapi
 package ipapi
 
 import (
