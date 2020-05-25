@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 var (
-	countStart    time.Time
-	resetDuration time.Duration
-	rateLimit     int64
-	rateCounter   int64
+	countStart  time.Time
+	ttl         time.Duration
+	requestLeft int64
 )
 
 //Response from http://ip-api.com/json/
@@ -57,13 +57,16 @@ func Get(host string) (*Response, error) {
 	//Per documentation
 	if res.StatusCode == http.StatusForbidden ||
 		res.StatusCode == http.StatusTooManyRequests {
-		rateCounter = rateLimit
+		requestLeft = 0
 		return nil, errors.New("Rate limit reached")
 	} else if res.StatusCode != 200 {
 		return nil, fmt.Errorf("status: %s", res.Status)
 	}
 
-	rateCounter++
+	countStart = time.Now()
+	requestLeft, _ = strconv.ParseInt(res.Header.Get("X-Rl"), 10, 64)
+	sec, _ := strconv.ParseInt(res.Header.Get("X-Ttl"), 10, 64)
+	ttl = time.Duration(sec) * time.Second
 	response := &Response{}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -81,16 +84,10 @@ func Get(host string) (*Response, error) {
 
 func reachedLimit() bool {
 	if countStart.IsZero() {
-		countStart = time.Now()
-		resetDuration = 1 * time.Minute
-		rateLimit = 45
-		rateCounter = 0
 		return false
 	}
-	if time.Now().After(countStart.Add(resetDuration)) {
-		return rateCounter >= rateLimit
+	if time.Now().Before(countStart.Add(ttl)) {
+		return requestLeft <= 0
 	}
-	countStart = time.Now()
-	rateCounter = 0
 	return false
 }

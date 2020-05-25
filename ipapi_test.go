@@ -28,10 +28,9 @@ func TestInvalidIPAddress(t *testing.T) {
 }
 
 func TestRateLimit(t *testing.T) {
-	countStart = time.Now().Add(-10 * time.Hour)
-	resetDuration = 1 * time.Hour
-	rateCounter = 11
-	rateLimit = 10
+	requestLeft = 0
+	countStart = time.Now()
+	ttl = 1 * time.Minute
 	resp, err := Get("")
 	assert.Empty(t, resp)
 	assert.Equal(t, "Rate limit reached", err.Error())
